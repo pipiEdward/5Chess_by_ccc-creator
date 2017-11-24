@@ -14,7 +14,7 @@ function Room(roomId) {
 	this.join = function (playerName) {
 		for (let i = 0; i < RoomSpace; i++) {
 			if (this.playerList[i] == null) {
-				this.playerList[i] = playerName;
+				this.playerList[i] = { name: playerName, ready: false };
 				return i;
 			}
 			if (i == RoomSpace - 1) {
@@ -96,8 +96,7 @@ function findClient(roomId, playerIndex) {
 		if (c.roomId == roomId && playerIndex == playerIndex) {
 			client = c;
 		}
-		break;
-	})
+	});
 };
 
 function onOpen(event) {
@@ -113,11 +112,14 @@ function onMessage(event) {
 			case 'createRoom':
 				onCreateRoom.call(self, m);
 				break;
-			case 'roomList':
-				//onRoomList.call(self, m);
-				break;
 			case 'joinRoom':
 				onJoinRoom.call(self, m);
+				break;
+			case 'downChess':
+				onDownChess.call(self, m);
+				break;
+			case 'ready':
+				onReady.call(self, m);
 				break;
 			default:
 				break;
@@ -132,9 +134,16 @@ function onClose(event) {
 
 	let room = roomMap[this.roomId];
 	if (room) {
+		let name = room.playerList[this.playerIndex].name;
 		room.leave(this.playerIndex);
 		console.log('leave', roomMap);
+		wss.clients.forEach(client => {
+			if (client.roomId == this.roomId) {
+				send.call(client, { f: 'someOneQuit', msg: name + '离开了房间' });
+			}
+		});
 	}
+
 };
 
 function onError(event) {
@@ -179,7 +188,12 @@ function onJoinRoom(msg) {
 	}
 	let room = roomMap[roomId];
 	let result = room.join(playerName);
-	let _msg = {
+	if (result == -1) {
+		send.call(this, { f: 'roomError', msg: '该房间已满' });
+		return;
+	}
+
+	let _msg = {//获取对家数据
 		f: 'joinRoom',
 		msg: [room, result],
 	};
@@ -187,16 +201,59 @@ function onJoinRoom(msg) {
 	this.roomId = roomId;
 	this.playerIndex = result;
 
-	if (room.checkRoomMax()) {//开始对局
-		let arr = [];
-		wss.clients.forEach(client => {
-			if (client.roomId == roomId) {
-				arr.push(client);
-			}
-		});
-		broadcastToArr(arr, { f: 'gameStart', msg: room });
-	}
+	let enemy;
+	let enemyResult = result == 0 ? 1 : 0;
+	wss.clients.forEach(client => {
+		if (client.roomId == roomId && client.playerIndex == enemyResult) {
+			enemy = client;
+		}
+	});
+	//给对家传递数据
+	send.call(enemy, { f: 'eneJoin', msg: [room, result] });
 };
+
+function onDownChess(msg) {
+	console.log('onDownChess');
+	let roomId = msg[0];
+	let tag = msg[1];
+	let color = msg[2];
+	//广播
+	wss.clients.forEach(client => {
+		if (client.roomId == roomId) {
+			send.call(client, { f: 'downChess', msg: [tag, color] });
+		}
+	})
+};
+
+function onReady(msg) {
+	console.log('onReady');
+	let roomid = msg[0];
+	let pid = msg[1];
+	console.log(roomid, pid, roomMap[roomid].playerList);
+	let p = roomMap[roomid].playerList[pid];
+	p.ready = true;
+
+	let count = 0;
+	roomMap[roomid].playerList.forEach(p => {
+		if (p != null && p.ready) {
+			count++;
+		}
+	});
+
+	let start = count == RoomSpace;
+	if (start) {
+		roomMap[roomid].playerList.forEach(p => {
+			p.ready = false;
+		});
+	}
+
+	wss.clients.forEach(client => {
+		if (client.roomId == roomid) {
+			send.call(client, { f: 'ready', msg: [pid, start] });
+		}
+	})
+}
+
 
 //申请房间列表
 function onRoomList(msg) {

@@ -831,13 +831,13 @@
     },
     "_contentSize": {
       "__type__": "cc.Size",
-      "width": 320,
-      "height": 80
+      "width": 160,
+      "height": 40
     },
     "_rotationX": 0,
     "_rotationY": 0,
-    "_scaleX": 1,
-    "_scaleY": 1,
+    "_scaleX": 2,
+    "_scaleY": 2,
     "_position": {
       "__type__": "cc.Vec2",
       "x": 0,
@@ -881,7 +881,7 @@
       "a": 255
     },
     "_N$placeholder": "输入昵称",
-    "_N$placeholderFontSize": 30,
+    "_N$placeholderFontSize": 20,
     "_N$placeholderFontColor": {
       "__type__": "cc.Color",
       "r": 127,
@@ -925,13 +925,13 @@
     },
     "_contentSize": {
       "__type__": "cc.Size",
-      "width": 320,
-      "height": 80
+      "width": 160,
+      "height": 40
     },
     "_rotationX": 0,
     "_rotationY": 0,
-    "_scaleX": 1,
-    "_scaleY": 1,
+    "_scaleX": 2,
+    "_scaleY": 2,
     "_position": {
       "__type__": "cc.Vec2",
       "x": 0,
@@ -975,7 +975,7 @@
       "a": 255
     },
     "_N$placeholder": "输入房间号",
-    "_N$placeholderFontSize": 30,
+    "_N$placeholderFontSize": 20,
     "_N$placeholderFontColor": {
       "__type__": "cc.Color",
       "r": 127,

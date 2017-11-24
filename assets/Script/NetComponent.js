@@ -5,15 +5,15 @@ let NetworkComponent = cc.Class({
     properties: {
     },
     onLoad() {
-        this.a = NetTarget.on('net', this.getNetData.bind(this));
-        this.b = NetTarget.on('netstart', this.netStart.bind(this));
-        this.c = NetTarget.on('netclose', this.netClose.bind(this));
+        this.a = NetTarget.on('net', this.getNetData, this);
+        this.b = NetTarget.on('netstart', this.netStart, this);
+        this.c = NetTarget.on('netclose', this.netClose, this);
     },
     onDestroy() {
         cc.log('destroy');
-        NetTarget.off('net', this.getNetData.bind(this));
-        NetTarget.off('netstart', this.netStart.bind(this));
-        NetTarget.off('netclose', this.netClose.bind(this));
+        NetTarget.off('net', this.getNetData, this);
+        NetTarget.off('netstart', this.netStart, this);
+        NetTarget.off('netclose', this.netClose, this);
     },
     /**
      * 获取服务端数据

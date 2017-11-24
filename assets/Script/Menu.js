@@ -76,18 +76,18 @@ cc.Class({
 
     onCreateRoom(msg) {
         let room = msg[0];
-        let result = msg[1];
-        RoomId = room.roomId;
-        MyResult = result == 0 ? 'white' : 'black';
-        MyName = room.playerList[result];
+        let seat = msg[1];
+        RoomData = room;
+        MySeat = seat;
+        IsJoin = false;
         cc.director.loadScene('Game');
     },
     onJoin(msg) {
         let room = msg[0];
-        let result = msg[1];
-        RoomId = room.roomId;
-        MyResult = result == 0 ? 'white' : 'black';
-        MyName = room.playerList[result];
+        let seat = msg[1];
+        RoomData = room;
+        MySeat = seat;
+        IsJoin = true;
         cc.director.loadScene('Game');
     },
 

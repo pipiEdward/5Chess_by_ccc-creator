@@ -10,6 +10,8 @@ cc.Class({
 
         orderNode: cc.Node,
 
+        readyNode: cc.Node,
+
         chessList: {//棋子节点的集合，用一维数组表示二维位置
             default: [],
             type: [cc.Node],
@@ -17,12 +19,14 @@ cc.Class({
         },
         namelb1: cc.Label,
         namelb2: cc.Label,
+        readylb1: cc.Node,
+        readylb2: cc.Node,
 
         roomIdLb: cc.Label,
 
         whiteSpriteFrame: cc.SpriteFrame,
         blackSpriteFrame: cc.SpriteFrame,
-        gameState: 'white',
+        gameState: null,
         myName: '我',
         enemyName: '',
 
@@ -41,6 +45,10 @@ cc.Class({
         this._super();
         this.resultNode.active = false;
         this.orderNode.active = false;
+        this.readyNode.active = false;
+        this.readylb1.active = false;
+        this.readylb2.active = false;
+        this.gameState = null;
 
         this.initBorad();
         this.initGroup();
@@ -53,13 +61,27 @@ cc.Class({
         } else {
             this.isRobort = false;
             this.roomIdLb.node.active = true;
-            this.roomIdLb.string = '房间号：' + RoomId;
-            this.myName = MyName;
+            this.checkJoin();
         }
-
-        this.namelb1.string = this.myName;
-        this.namelb2.string = this.enemyName;
     },
+
+    //重开
+    playAgain() {
+        if (this.isRobort) {
+            this.refreshRoom();
+            this.showChooceOrder();
+        } else {
+            this.refreshRoom();
+            this.doReady();
+        }
+        this.resultNode.active = false;
+    },
+
+    doReady() {
+        Network.send({ f: 'ready', msg: [RoomData.roomId, MySeat] });
+    },
+
+
 
     getNetData(event) {
         cc.log('Game Get');
@@ -70,20 +92,98 @@ cc.Class({
                 case 'roomError':
                     alert(msg);
                     break;
-                case 'gameStart':
-                    this.onGameStart(msg);
+                case 'eneJoin':
+                    this.onEneJoin(msg);
+                    break;
+                case 'downChess':
+                    this.onDownChess(msg);
+                    break;
+                case 'someOneQuit':
+                    this.onSomeOneQuit(msg);
+                    break;
+                case 'ready':
+                    this.onReady(msg);
                     break;
             }
         }
     },
+    netClose(event) {
+        this._super(event);
+        cc.director.loadScene('Menu');
+        alert('断开连接,退出房间');
+    },
 
-    onGameStart(msg) {
-        let enemyName = msg.playerList[MyResult == 0 ? 1 : 0];
-        this.enemyName = enemyName;
+    checkJoin() {
+        let playerList = RoomData.playerList;
+        this.myName = playerList[MySeat].name;
+        this.roomIdLb.string = '房间号：' + RoomData.roomId;
+        if (IsJoin) {//自己是加入者
+            this.enemyName = playerList[MySeat == 0 ? 1 : 0].name;
+            this.myState = MySeat == 0 ? 'white' : 'black';
+            this.enemyState = MySeat != 0 ? 'white' : 'black';
+            this.namelb1.string = this.myName;
+            this.namelb2.string = this.enemyName;
+            this.readylb2.active = playerList[MySeat == 0 ? 1 : 0].ready;
+        } else {//自己是创建者
+            this.namelb1.string = this.myName;
+            this.namelb2.string = this.enemyName;
+        }
+        this.readyNode.active = true;
+    },
+
+    onEneJoin(msg) {
+        let room = msg[0];
+        let result = msg[1];
+        this.enemyName = room.playerList[result].name;
         this.namelb2.string = this.enemyName;
-        this.myState = MyResult;
-        this.enemyState = MyResult == 'white' ? 'black' : 'white';
-        this.gameState = 'white';
+        this.myState = MySeat == 0 ? 'white' : 'black';
+        this.enemyState = result == 0 ? 'white' : 'black';
+    },
+
+    onDownChess(msg) {
+        let tag = msg[0];
+        let color = msg[1];
+        let node = this.chessList[tag];
+        this.downChess(node, color);
+    },
+
+    onSomeOneQuit(msg) {
+        this.enemyName = '';
+        alert(msg);
+        this.refreshRoom();
+        this.readyNode.active = false;
+    },
+
+    onReady(msg) {
+        let pid = msg[0];
+        if (pid == MySeat) {
+            this.readyNode.active = false;
+            this.readylb1.active = true;
+        } else {
+            this.readylb2.active = true;
+        }
+        if (msg[1]) {//开始对局
+            cc.log('开始');
+            this.node.runAction(cc.sequence(cc.delayTime(1), cc.callFunc(() => {
+                this.readylb1.active = false;
+                this.readylb2.active = false;
+                this.turnPlace();
+            })));
+        }
+    },
+
+    refreshRoom() {
+        for (let y = 0; y < 15; y++) {
+            for (let x = 0; x < 15; x++) {
+                let tag = y * 15 + x;
+                let node = this.chessList[tag];
+                node.getComponent(cc.Sprite).spriteFrame = null;
+            }
+        }
+        this.namelb1.string = this.myName;
+        this.namelb2.string = this.enemyName;
+        this.gameState = null;
+        this.node.stopAllActions();
     },
 
     checkWhoFirst() {
@@ -91,12 +191,14 @@ cc.Class({
         } else {//电脑先行
             //开局白棋（电脑）在棋盘中央下一子
             this.downChess(this.chessList[112], 'white');
+
         }
     },
 
     //换边
     turnPlace() {
-        this.gameState = this.gameState == 'white' ? 'black' : 'white';
+        this.gameState = (this.gameState == null || this.gameState == 'black') ? 'white' : 'black';
+        cc.log(this.myState, this.gameState);
         if (this.gameState == this.myState) {
             this.namelb1.string = this.myName + '(思考中)';
             this.namelb2.string = this.enemyName;
@@ -107,6 +209,8 @@ cc.Class({
                 this.node.runAction(cc.sequence(cc.delayTime(0.5), cc.callFunc(data => {
                     this.ai();
                 })));
+            } else {
+
             }
         }
     },
@@ -119,11 +223,13 @@ cc.Class({
         this.myState = 'white';
         this.enemyState = 'black';
         this.orderNode.active = false;
+        this.turnPlace();
     },
     goLast() {
         this.myState = 'black';
         this.enemyState = 'white';
         this.orderNode.active = false;
+        this.turnPlace();
     },
 
     //显示胜利失败
@@ -147,7 +253,11 @@ cc.Class({
                 newNode.on('touchend', event => {
                     let target = event.currentTarget;
                     if (self.gameState === self.myState && target.getComponent(cc.Sprite).spriteFrame === null) {//我的回合并且是空位
-                        self.downChess(target, self.gameState);
+                        if (this.isRobort) {
+                            self.downChess(target, self.myState);
+                        } else {
+                            self.sendDownChess(target, self.myState);
+                        }
                     }
                 });
                 self.chessList.push(newNode);//加入数组
@@ -351,12 +461,14 @@ cc.Class({
         }
     },
 
-    getSpFrameByState(state) {
-        return state == 'black' ? this.blackSpriteFrame : this.whiteSpriteFrame;
+    //发送落子
+    sendDownChess(node, color) {
+        Network.send({ f: 'downChess', msg: [RoomData.roomId, node.tag, color] });
     },
 
-
-
+    getSpFrameByState(state) {
+        return state == 'black' ? this.blackSpriteFrame : this.whiteSpriteFrame;
+    }
 
 
     // called every frame, uncomment this function to activate update callback
