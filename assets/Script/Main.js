@@ -151,7 +151,7 @@ cc.Class({
         this.enemyName = '';
         alert(msg);
         this.refreshRoom();
-        this.readyNode.active = false;
+        this.readyNode.active = true;
     },
 
     onReady(msg) {
